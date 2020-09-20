@@ -76,8 +76,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 0.0001
-  m_LinearDrag: 0.001
-  m_AngularDrag: 0.001
+  m_LinearDrag: 0
+  m_AngularDrag: 0
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_Interpolate: 0
@@ -97,4 +97,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rb: {fileID: -2840077394249308828}
+  RCS: 1
+  CenterOfMass: {fileID: 5604608415397462177}
   offset: {x: 0, y: 0}

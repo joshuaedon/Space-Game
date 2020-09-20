@@ -1,146 +1,86 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 
 public class Controller : MonoBehaviour {
+	// GUI
 	public GameObject DebugText;
-
+	// BlockDictionary
 	public static BlockDictionary blockDict;
-
+	// Objects
+	public ColonistManager ColonistManager;
+	public ConstructionManager ConstructionManager;
 	public static List<Structure> structures;
-
-	public static GameObject selectedBlock;
-	private Structure overStructure;
-	private Vector2Int structIndex;
-	private float delay;
 
 	void Start() {
 		blockDict = GameObject.Find("BlocksPanel").GetComponent<BlockDictionary>();
 
-		GameData data = SaveSystem.LoadGame("save");
-
 		structures = new List<Structure>();
-		if(data != null) {
-			GameObject structureObjRef = (GameObject)Instantiate(Resources.Load("prefabs/Structure"));
-			foreach(StructureData structureData in data.structures) {
-				GameObject structureObj = (GameObject)Instantiate(structureObjRef, transform);
-	        	Structure structure = structureObj.GetComponent<Structure>();
-	        	structure.load(structureData);
-	        	structures.Add(structure);
-			}
-			Destroy(structureObjRef);
+
+		if(SaveSystem.toLoad != null) {
+			load(SaveSystem.toLoad);
+			SaveSystem.toLoad = null;
 		}
-	}	
+
+		ColonistManager.addColonist();
+	}
+
+	public void load(GameData data) {
+		// Load camera
+		Camera.main.GetComponent<CameraController>().load(data.cameraData);
+
+		// Load structures
+		GameObject structureObjRef = (GameObject)Instantiate(Resources.Load("prefabs/Structure"));
+		foreach(StructureData structureData in data.structures) {
+			GameObject structureObj = (GameObject)Instantiate(structureObjRef, transform);
+        	Structure structure = structureObj.GetComponent<Structure>();
+        	structure.load(structureData);
+        	structures.Add(structure);
+		}
+		Destroy(structureObjRef);
+	}
 
     void Update() {
-    	// Debug.Log(this.delay);
-    	this.delay = Mathf.Max(0f, this.delay - Time.deltaTime * 20f);
-
-    	// Toggle debug text
-        if(Input.GetKeyDown(KeyCode.F2))
+        if(Input.GetKeyDown(KeyCode.F2)) // Toggle debug text
             DebugText.SetActive(!DebugText.activeInHierarchy);
-
-        // Placing blocks
-        if(selectedBlock != null) {
-        	Vector3 pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-
-        	// Find a structure that a block can be added to
-        	if(this.overStructure != null) {
-        		Vector2Int relIndex = this.overStructure.getRelativeIndex(pos);
-    			// If mouse outside structure's block array indices or not adjacent to an existing block
-    			if(relIndex.x < 0 || relIndex.y < 0 || !this.overStructure.canPlace(relIndex)) {
-    				this.overStructure = null;
-    				selectedBlock.transform.SetParent(transform);
-    			} else {
-    				this.structIndex = relIndex;
-    			}
-        	}
-        	if(this.overStructure == null) {
-        		// Check if the mouse is adjacent to an exisiting structure which can be added to
-        		foreach(Structure structure in structures) {
-        			Vector2Int relIndex = structure.getRelativeIndex(pos);
-        			// If mouse within structure's block array's indices
-        			if(relIndex.x >= 0 && relIndex.y >= 0 && structure.canPlace(relIndex)) {
-        				this.overStructure = structure;
-        				this.structIndex = relIndex;
-        			}
-        		}
-        	}
-
-			// Rotate block
-			if(overStructure == null) {
-				if(Input.GetKey(KeyCode.Q))
-	            	selectedBlock.transform.Rotate(0f, 0f, Settings.rotationSpeed * Time.deltaTime, Space.Self);
-	            if(Input.GetKey(KeyCode.E))
-	            	selectedBlock.transform.Rotate(0f, 0f, -Settings.rotationSpeed * Time.deltaTime, Space.Self);
-            } else {
-            	if(Input.GetKeyDown(KeyCode.Q))
-	            	selectedBlock.transform.Rotate(0f, 0f, 90f, Space.Self);
-	            if(Input.GetKeyDown(KeyCode.E))
-	            	selectedBlock.transform.Rotate(0f, 0f, -90f, Space.Self);
-            }
-
-        	// Set block blueprint position
-        	if(this.overStructure == null) {
-				selectedBlock.transform.position = new Vector3(pos.x, pos.y, 0);
-			} else {
-				selectedBlock.transform.SetParent(this.overStructure.transform);
-				Vector2Int localPos = this.structIndex - this.overStructure.offset;
-				selectedBlock.transform.localEulerAngles = new Vector3(0, 0, Mathf.Round(selectedBlock.transform.localEulerAngles.z / 90f) * 90f);
-				selectedBlock.transform.localPosition = new Vector3(localPos.x, localPos.y, 0f);
-				// Debug.Break();
-			}
-
-            // Tint red if colliding with existing structures
-            if(selectedBlock.GetComponent<BoxCollider2D>().IsTouchingLayers())
-            	selectedBlock.GetComponent<Renderer>().material.SetColor("Tint", Color.red);
-            else {
-            	if(overStructure == null)
-            		selectedBlock.GetComponent<Renderer>().material.SetColor("Tint", Color.white);
-            	else
-            		selectedBlock.GetComponent<Renderer>().material.SetColor("Tint", Color.green);
-
-				if(Input.GetMouseButton(0) && this.delay == 0f && !IsPointerOverUIObject()) {
-					this.delay = 1f;
-
-					// Create new single-block strucute
-					if(this.overStructure == null) {
-		        		GameObject structureObj = (GameObject)Instantiate(Resources.Load("prefabs/Structure"), transform);
-		        		structureObj.transform.position = selectedBlock.transform.position;
-		        		structureObj.transform.eulerAngles = selectedBlock.transform.eulerAngles;
-		        		this.overStructure = structureObj.GetComponent<Structure>();
-		        		structures.Add(this.overStructure);
-		        		this.structIndex = new Vector2Int(1, 1);
-					}
-
-		        	GameObject blockObj = (GameObject)Instantiate(selectedBlock, transform);
-			    	Block block = blockObj.GetComponent<Block>();
-					block.setBlueprint(false);
-			    	this.overStructure.addBlock(block, this.structIndex.x, this.structIndex.y);
-			    	block.transform.eulerAngles = selectedBlock.transform.eulerAngles;
-			    	// Debug.Break();
-		        }
-		    }
-		    // Deselect block
-	        if(Input.GetMouseButtonDown(1)) {
-	        	Destroy(selectedBlock);
-	        	selectedBlock = null;
-	        }
+        if(Input.GetKeyDown(KeyCode.F3)) // Take a screenshot
+        	takeScreenshot();
+        if(Input.GetKeyDown(KeyCode.F5)) // Quicksave
+        	SaveSystem.SaveGame("save");
+            
+        if(ConstructionManager.selectedBlock != null) {
+        	ConstructionManager.blockPlacement();
+        } else {
+        	// If not placing block, select/deselect colonist
+    		if(Input.GetMouseButtonDown(0) && !IsPointerOverUIObject()) {
+    			RaycastHit2D hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
+		        if(hit.transform != null && hit.transform.gameObject.tag == "Colonist")
+		        	ColonistManager.selectColonist(hit.transform.gameObject.GetComponent<Colonist>());
+		        else if(ColonistManager.colonistSelected())
+		        	ColonistManager.deselectColonist();
+    		}
         }
     }
 
-    public void selectBlock(GameObject block) {
-    	if(selectedBlock != null)
-        	Destroy(selectedBlock);
-    	selectedBlock = (GameObject)Instantiate(block, transform);
-		selectedBlock.GetComponent<Block>().setBlueprint(true);
+    private void takeScreenshot() {
+    	if(!Directory.Exists(Application.persistentDataPath + "/screenshots"))
+    		Directory.CreateDirectory(Application.persistentDataPath + "/screenshots");
+
+    	string path = Application.persistentDataPath + "/screenshots/Screenshot" + System.DateTime.Now.ToString("yyyy.MM.dd.hh.mm.ss.fff") + ".png";
+    	ScreenCapture.CaptureScreenshot(path);
     }
 
     public void clearStructures() {
     	foreach(Structure structure in structures)
     		Destroy(structure.gameObject);
 		structures = new List<Structure>();
+    }
+
+    public void quitToMainMenu() {
+    	SceneManager.LoadScene("MainMenu", LoadSceneMode.Single);
     }
 
     void OnApplicationQuit() {
@@ -158,9 +98,12 @@ public class Controller : MonoBehaviour {
 
 [System.Serializable]
 public class GameData {
+	public CameraData cameraData;
 	public StructureData[] structures;
 
 	public GameData() {
+		this.cameraData = new CameraData(Camera.main.GetComponent<CameraController>());
+
 		this.structures = new StructureData[Controller.structures.Count];
 		for(int i = 0; i < this.structures.Length; i++)
 			this.structures[i] = new StructureData(Controller.structures[i]);

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class Structure : Object {
+    public GameObject CenterOfMass;
+
     public List<List<Block>> blocks;
     public Vector2Int offset;
 
@@ -23,7 +25,6 @@ public class Structure : Object {
     	this.rb.angularVelocity = structureData.angularVel;
     	this.offset = new Vector2Int(structureData.offset[0], structureData.offset[1]);
 
-    	// Debug.Log(structureData.blocks.GetLength(0) + ", " + structureData.blocks.GetLength(1));
     	this.blocks = new List<List<Block>>();
     	for(int i = 0; i < structureData.blocks.GetLength(0); i++) {
     		if(this.blocks.Count == i)
@@ -40,11 +41,6 @@ public class Structure : Object {
 				}
 			}
 		}
-    	// Debug.Log(this.blocks.Count + ", " + this.blocks[0].Count);
-    }
-
-    void Update() {
-    	this.rb.position = new Vector2((this.rb.position.x + 600) % 400 - 200, (this.rb.position.y + 600) % 400 - 200);
     }
 
     public Vector2Int getRelativeIndex(Vector2 pos) {
@@ -59,32 +55,43 @@ public class Structure : Object {
 	        Mathf.FloorToInt(relPos.x * Mathf.Sin(delta) + relPos.y * Mathf.Cos(delta) + 0.5f)
 	    ) + this.offset;
 
+        // Return (-1, -1) if position is out of array bounds
 	    if(relIndex.x >= blocks.Count || relIndex.y >= blocks[0].Count)
 	    	return new Vector2Int(-1, -1);
 
 	    return relIndex;
     }
 
-    public bool canPlace(Vector2Int relIndex) {
+    public bool[] adjacentBlocks(Vector2Int relIndex) {
     	// Debug.Log("rel: " + relIndex + " - off: " + offset + ", array: (" + blocks.Count + "," + blocks[0].Count + ")");
-    	return this.blocks[relIndex.x][relIndex.y] == null && (
-    		   (relIndex.x + 1 < this.blocks.Count    && /*check if block can be placed on this side of that block (with rotation in account) (function of that block) &&*/this.blocks[relIndex.x + 1][relIndex.y    ] != null) ||
-    		   (relIndex.y + 1 < this.blocks[0].Count && this.blocks[relIndex.x    ][relIndex.y + 1] != null) ||
-    		   (relIndex.x - 1 >= 0                   && this.blocks[relIndex.x - 1][relIndex.y    ] != null) ||
-    		   (relIndex.y - 1 >= 0                   && this.blocks[relIndex.x    ][relIndex.y - 1] != null));
+        /*check if block can be placed on this side of that block (with rotation in account) (function of that block) &&*/
+        if(this.blocks[relIndex.x][relIndex.y] != null)
+            return new bool[4];
+        else
+            return new bool[] {
+    		    (relIndex.y + 1 < this.blocks[0].Count && this.blocks[relIndex.x    ][relIndex.y + 1] != null) && isConnection(relIndex.x    , relIndex.y + 1, 2),
+    		    (relIndex.x - 1 >= 0                   && this.blocks[relIndex.x - 1][relIndex.y    ] != null) && isConnection(relIndex.x - 1, relIndex.y    , 3),
+    		    (relIndex.y - 1 >= 0                   && this.blocks[relIndex.x    ][relIndex.y - 1] != null) && isConnection(relIndex.x    , relIndex.y - 1, 0),
+                (relIndex.x + 1 < this.blocks.Count    && this.blocks[relIndex.x + 1][relIndex.y    ] != null) && isConnection(relIndex.x + 1, relIndex.y    , 1)
+            };
+    }
+
+    private bool isConnection(int x, int y, int dir) {
+        Block block = this.blocks[x][y];
+        return block.type.connections[Mathf.RoundToInt(block.transform.localEulerAngles.z / 90f - dir + 4) % 4];
     }
 
     public void addBlock(Block block, int i, int j) {
     	// Debug.Log("before - ij: (" + i + "," + j + "), off: " + offset + ", array: (" + blocks.Count + "," + blocks[0].Count + ")");
 
     	this.blocks[i][j] = block;
-    	// Set new com and mass
-    	// Debug.Log(this.rb.centerOfMass);
-    	this.rb.mass += block.type.mass;
     	// Set new block's relative position and rotation
     	block.transform.SetParent(this.transform);
 		block.transform.localPosition = new Vector3(i - this.offset.x, j - this.offset.y, 0);
-		// block.transform.localEulerAngles = Vector3.zero;
+    	// Set new com and mass
+        this.rb.centerOfMass = (this.rb.centerOfMass * this.rb.mass + ((Vector2)block.transform.localPosition) * block.type.mass) / (this.rb.mass + block.type.mass);
+        this.CenterOfMass.transform.localPosition = this.rb.centerOfMass;
+    	this.rb.mass += block.type.mass;
 
     	// Expand block lists
     	if(i == 0) {
@@ -105,8 +112,6 @@ public class Structure : Object {
     		foreach(List<Block> list in this.blocks)
     			list.Add( null);
     	}
-
-    	// Debug.Log("after - ij: (" + i + "," + j + "), off: " + offset + ", array: (" + blocks.Count + "," + blocks[0].Count + ")");
     }
 }
 

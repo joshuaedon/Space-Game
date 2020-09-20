@@ -89,5 +89,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Wood Frame
       objectReference: {fileID: 0}
+    - target: {fileID: 4468340391861876812, guid: 31c0dcdf8a0ee5142a5dec6557356078,
+        type: 3}
+      propertyPath: m_Icon
+      value: 
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 31c0dcdf8a0ee5142a5dec6557356078, type: 3}

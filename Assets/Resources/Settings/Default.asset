@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c491e99242bf5442933097ef5c21d1f, type: 3}
+  m_Name: Default
+  m_EditorClassIdentifier: 
+  minZoom: 1
+  maxZoom: 50
+  zoomSpeed: 5000
+  zoomFollow: 0.1
+  rotationSpeed: 300
+  rotationFollow: 0.1
+  panSpeed: 25
+  panFollow: 0.1
+  camLookAhead: 2
+  colonistRotation: 0.6
+  colonistMovement: 20
+  minRCSVelocity: 0.01
+  g: 25
+  minGravDist: 0.1
